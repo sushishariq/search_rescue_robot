@@ -1,0 +1,32 @@
+# Intrinsics of the simulated camera in models/sar_waffle/model.sdf
+#   width 640, height 480, horizontal_fov 1.02974 rad
+#   fx = fy = width / (2 * tan(hfov / 2)) = 565.6009
+#   cx = (width + 1) / 2 = 320.5,  cy = (height + 1) / 2 = 240.5
+#   Ideal pinhole: no lens distortion in simulation.
+# If you change resolution or FOV in the SDF, recompute these.
+image_width: 640
+image_height: 480
+camera_name: camera
+camera_matrix:
+  rows: 3
+  cols: 3
+  data: [565.6009, 0.0, 320.5,
+         0.0, 565.6009, 240.5,
+         0.0, 0.0, 1.0]
+distortion_model: plumb_bob
+distortion_coefficients:
+  rows: 1
+  cols: 5
+  data: [0.0, 0.0, 0.0, 0.0, 0.0]
+rectification_matrix:
+  rows: 3
+  cols: 3
+  data: [1.0, 0.0, 0.0,
+         0.0, 1.0, 0.0,
+         0.0, 0.0, 1.0]
+projection_matrix:
+  rows: 3
+  cols: 4
+  data: [565.6009, 0.0, 320.5, 0.0,
+         0.0, 565.6009, 240.5, 0.0,
+         0.0, 0.0, 1.0, 0.0]

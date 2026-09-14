@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<sdf version="1.6">
+  <model name="aruco_4">
+    <static>true</static>
+    <link name="link">
+      <collision name="collision">
+        <geometry><box><size>0.01 0.3 0.3</size></box></geometry>
+      </collision>
+      <visual name="visual">
+        <geometry><box><size>0.01 0.3 0.3</size></box></geometry>
+        <material>
+          <script>
+            <uri>model://aruco_4/materials/scripts</uri>
+            <uri>model://aruco_4/materials/textures</uri>
+            <name>ArucoMarker/Id4</name>
+          </script>
+        </material>
+      </visual>
+    </link>
+  </model>
+</sdf>

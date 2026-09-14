@@ -1,0 +1,15 @@
+material ArucoMarker/Id4
+{
+  technique
+  {
+    pass
+    {
+      lighting off
+      texture_unit
+      {
+        texture aruco_4.png
+        filtering none
+      }
+    }
+  }
+}

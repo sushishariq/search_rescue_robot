@@ -1,0 +1,37 @@
+# Settings shared by both services (YAML anchor, reused with <<: *ros-common)
+x-ros-common: &ros-common
+  image: sar_ws:humble
+  network_mode: host
+  ipc: host
+  environment:
+    - DISPLAY=${DISPLAY}
+    - QT_X11_NO_MITSHM=1
+    - ROS_DOMAIN_ID=42
+  devices:
+    - /dev/dri:/dev/dri
+
+services:
+  # Reproducible run: code baked into the image
+  sar:
+    <<: *ros-common
+    build: .
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./src/sar_mission/results:/sar_ws/src/sar_mission/results
+    command: bash
+
+  # Development: host src/ mounted live, build outputs kept in named volumes
+  dev:
+    <<: *ros-common
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./src:/sar_ws/src
+      - dev_build:/sar_ws/build
+      - dev_install:/sar_ws/install
+      - dev_log:/sar_ws/log
+    command: bash
+
+volumes:
+  dev_build:
+  dev_install:
+  dev_log:
