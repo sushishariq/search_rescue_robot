@@ -18,7 +18,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     bringup_dir = get_package_share_directory('sar_bringup')
     gazebo_ros_dir = get_package_share_directory('gazebo_ros')
-    
+
     urdf_path = os.path.join(bringup_dir, 'urdf', 'sar_waffle.urdf')
     sdf_path = os.path.join(bringup_dir, 'models', 'sar_waffle', 'model.sdf')
     with open(urdf_path, 'r') as f:
@@ -40,7 +40,7 @@ def generate_launch_description():
         DeclareLaunchArgument('use_sim_time', default_value='true'),
         DeclareLaunchArgument('x', default_value='-3.0', description='Spawn x [m]'),
         DeclareLaunchArgument('y', default_value='2.5', description='Spawn y [m]'),
-        DeclareLaunchArgument('yaw', default_value='1.5708', description='Spawn yaw [rad]'),
+        DeclareLaunchArgument('yaw', default_value='0.0', description='Spawn yaw [rad]'),
     ]
 
     # Physics + sensors. Also loads the factory plugin (spawn service) and
