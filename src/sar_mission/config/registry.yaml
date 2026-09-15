@@ -1,0 +1,8 @@
+victim_registry:
+  ros__parameters:
+    detections_topic: victim_detections
+    merge_distance: 0.5        # detections of any ID within this distance of a victim are the same victim [m]
+    outlier_distance: 1.0      # same-ID detection this far from a confirmed victim is rejected [m]
+    min_observations: 3        # detections needed before a victim is reported
+    results_file: /sar_ws/src/sar_mission/results/victims.json   # mounted to the host by docker-compose
+    save_period: 2.0           # write results / republish RViz markers every N seconds [s]

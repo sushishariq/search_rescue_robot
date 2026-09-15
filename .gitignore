@@ -9,3 +9,5 @@ __pycache__/
 
 # editor
 .vscode/
+.pytest_cache/
+.pytest_cache/

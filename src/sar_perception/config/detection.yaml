@@ -1,0 +1,17 @@
+aruco_detector:
+  ros__parameters:
+    image_topic: /camera/image_raw
+    camera_info_topic: /camera/camera_info
+    # Calibration file (ROS camera_calibration format). Empty string = use camera_info topic.
+    # Default is resolved in the launch file to sar_bringup/config/camera_info.yaml.
+    camera_info_file: ""
+
+    dictionary: DICT_4X4_50
+    marker_length: 0.20          # side of the BLACK square [m]; must match generate_aruco_models.py
+
+    target_frame: map
+    tf_timeout: 0.2              # wait this long for camera->map at the image timestamp [s]
+
+    max_range: 3.5               # ignore detections farther than this (pose noise grows with range) [m]
+    min_marker_pixels: 20.0      # ignore markers whose side is shorter than this in the image [px]
+    publish_debug_image: true
