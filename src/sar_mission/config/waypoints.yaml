@@ -1,0 +1,16 @@
+# Patrol route in the map frame (= Gazebo world frame, see README).
+# Each waypoint is a viewing pose ~1.7 m in front of one marker, facing it.
+# yaw in degrees: 0 = +x (east), 90 = +y (north).
+frame_id: map
+loops: 1
+
+initial_pose: {x: -3.0, y: 2.5, yaw: 0.0}   # must match the spawn pose in sim.launch.py
+
+waypoints:
+  - {name: top_left_north_wall,   x: -4.0, y:  3.2, yaw:   90}   # marker 0 at (-4.00,  4.92)
+  - {name: top_left_south_wall,   x: -1.2, y:  1.8, yaw:  -90}   # marker 5 at (-1.20,  0.08)
+  - {name: top_right_east_wall,   x:  4.3, y:  3.0, yaw:    0}   # marker 1 at ( 5.92,  3.00)
+  - {name: bottom_right_south,    x:  4.0, y: -3.2, yaw:  -90}   # marker 2 at ( 4.00, -4.92)
+  - {name: bottom_right_north,    x:  1.2, y: -2.8, yaw:   90}   # marker 4 at ( 1.20, -1.08)
+  - {name: bottom_left_west_wall, x: -4.2, y: -2.0, yaw:  180}   # marker 3 at (-5.92, -2.00)
+  - {name: home,                  x: -3.0, y:  2.5, yaw:    0}

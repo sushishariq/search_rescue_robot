@@ -23,6 +23,7 @@ setup(
     entry_points={
         'console_scripts': [
             'victim_registry = sar_mission.victim_registry:main',
+            'patrol = sar_mission.patrol:main',
         ],
     },
 )

@@ -21,6 +21,7 @@ def generate_launch_description():
     map_yaml = LaunchConfiguration('map')
     params_file = LaunchConfiguration('params_file')
     rviz = LaunchConfiguration('rviz')
+    rviz_config = LaunchConfiguration('rviz_config')
     gui = LaunchConfiguration('gui')
 
     sim = IncludeLaunchDescription(
@@ -43,7 +44,7 @@ def generate_launch_description():
     rviz_node = Node(
         package='rviz2',
         executable='rviz2',
-        arguments=['-d', os.path.join(nav2_bringup_dir, 'rviz', 'nav2_default_view.rviz')],
+        arguments=['-d', rviz_config],
         parameters=[{'use_sim_time': True}],
         condition=IfCondition(rviz),
         output='screen',
@@ -53,6 +54,8 @@ def generate_launch_description():
         DeclareLaunchArgument('map', default_value=os.path.join(bringup_dir, 'maps', 'building.yaml')),
         DeclareLaunchArgument('params_file', default_value=os.path.join(bringup_dir, 'config', 'nav2_params.yaml')),
         DeclareLaunchArgument('rviz', default_value='true'),
+        DeclareLaunchArgument(
+            'rviz_config', default_value=os.path.join(nav2_bringup_dir, 'rviz', 'nav2_default_view.rviz')),
         DeclareLaunchArgument('gui', default_value='true'),
         sim,
         nav2,

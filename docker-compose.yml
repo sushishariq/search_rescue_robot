@@ -18,7 +18,7 @@ services:
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix:rw
       - ./src/sar_mission/results:/sar_ws/src/sar_mission/results
-    command: bash
+    command: ros2 launch sar_bringup mission.launch.py
 
   # Development: host src/ mounted live, build outputs kept in named volumes
   dev:
