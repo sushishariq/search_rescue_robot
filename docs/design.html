@@ -1,0 +1,193 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>SAR Marker Finder – Design</title>
+<style>
+  @page { size: A4; margin: 13mm 14mm 12mm 14mm; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Liberation Sans", "DejaVu Sans", Arial, sans-serif; font-size: 9.2pt; line-height: 1.32; color: #000; background: #fff; }
+  h1 { font-size: 15pt; margin: 0 0 1mm 0; }
+  .meta { font-size: 8.6pt; margin-bottom: 3mm; border-bottom: 1px solid #000; padding-bottom: 2mm; }
+  h2 { font-size: 10.5pt; margin: 3.2mm 0 1.2mm 0; }
+  p { margin: 0 0 1.6mm 0; }
+  code, .mono { font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 8.1pt; }
+  table { border-collapse: collapse; width: 100%; margin: 1mm 0 2mm 0; font-size: 8.5pt; }
+  th, td { border: 1px solid #000; padding: 0.7mm 1.6mm; text-align: left; vertical-align: top; }
+  th { font-weight: bold; }
+  td.num, th.num { text-align: right; }
+  ol, ul { margin: 0 0 1.6mm 0; padding-left: 5mm; }
+  li { margin-bottom: 0.6mm; }
+  .eq { font-family: "DejaVu Sans Mono", monospace; font-size: 8.4pt; border: 1px solid #000; padding: 1.4mm 2mm; margin: 1.2mm 0 2mm 0; }
+  .page { page-break-after: always; }
+  svg text { font-family: "Liberation Sans", "DejaVu Sans", Arial, sans-serif; }
+  .caption { font-size: 8pt; margin: 0.5mm 0 1mm 0; }
+  .two { display: flex; gap: 5mm; }
+  .two > div { flex: 1; }
+</style>
+</head>
+<body>
+
+<div class="page">
+<h1>Search-and-Rescue Marker Finder – Design</h1>
+<div class="meta">
+  ROS 2 Humble · Gazebo Classic 11 · Nav2 · OpenCV 4.5.4 (cv2.aruco) · Docker &nbsp;|&nbsp;
+  Repository: <span class="mono">github.com/sushishariq/search_rescue_robot</span>
+</div>
+
+<p>A TurtleBot3 Waffle patrols a 12 × 10 m simulated building with four rooms. It localizes with AMCL on a map built once with slam_toolbox, follows a Nav2 waypoint route, detects ArUco victim markers with classical OpenCV, projects each detection into the <span class="mono">map</span> frame through TF, and keeps a deduplicated victim registry that is exposed through the <span class="mono">/get_victims</span> service and exported to JSON/CSV. The whole stack starts with <span class="mono">docker compose up sar</span>, which runs a single mission launch file.</p>
+
+<h2>1. Architecture</h2>
+<svg viewBox="0 0 680 330" width="100%" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#000"/>
+    </marker>
+  </defs>
+  <g fill="none" stroke="#000" stroke-width="1">
+    <rect x="10" y="10" width="180" height="170"/>
+    <rect x="10" y="222" width="180" height="46"/>
+    <rect x="250" y="10" width="160" height="42"/>
+    <rect x="250" y="82" width="160" height="46"/>
+    <rect x="250" y="158" width="160" height="58"/>
+    <rect x="250" y="252" width="160" height="64"/>
+    <rect x="480" y="10" width="190" height="58" stroke-dasharray="4 3"/>
+    <rect x="480" y="158" width="190" height="58"/>
+    <rect x="480" y="252" width="190" height="64"/>
+  </g>
+  <g font-size="10.5">
+    <text x="20" y="28" font-weight="bold">Gazebo Classic 11</text>
+    <text x="20" y="46">building.world</text>
+    <text x="28" y="60" font-size="9.5">walls, 2 obstacles,</text>
+    <text x="28" y="73" font-size="9.5">6 ArUco markers (4x4, 0.20 m)</text>
+    <text x="20" y="93">sar_waffle model</text>
+    <text x="28" y="107" font-size="9.5">diff_drive → /odom,</text>
+    <text x="28" y="120" font-size="9.5">TF odom → base_footprint</text>
+    <text x="28" y="134" font-size="9.5">lidar 8 m, 10 Hz → /scan</text>
+    <text x="28" y="148" font-size="9.5">RGB camera 640×480, 15 Hz →</text>
+    <text x="28" y="161" font-size="9.5">/camera/image_raw</text>
+
+    <text x="20" y="240" font-weight="bold">robot_state_publisher</text>
+    <text x="20" y="256" font-size="9.5">sar_waffle.urdf → /tf_static</text>
+
+    <text x="260" y="27" font-weight="bold">map_server</text>
+    <text x="260" y="43" font-size="9.5">maps/building.pgm, .yaml</text>
+
+    <text x="260" y="100" font-weight="bold">amcl</text>
+    <text x="260" y="116" font-size="9.5">TF map → odom</text>
+
+    <text x="260" y="175" font-weight="bold">Nav2</text>
+    <text x="260" y="190" font-size="9.5">planner (NavFn), DWB controller</text>
+    <text x="260" y="204" font-size="9.5">bt_navigator, waypoint_follower</text>
+
+    <text x="260" y="270" font-weight="bold">aruco_detector</text>
+    <text x="260" y="285" font-size="9.5">detect → pose (optical frame)</text>
+    <text x="260" y="298" font-size="9.5">→ tf2 transform to map</text>
+    <text x="260" y="311" font-size="9.5">detection.yaml, camera_info.yaml</text>
+
+    <text x="490" y="27" font-weight="bold">RViz2</text>
+    <text x="490" y="43" font-size="9.5">map, laser, particles, path,</text>
+    <text x="490" y="57" font-size="9.5">detection + registry markers, image</text>
+
+    <text x="490" y="175" font-weight="bold">patrol</text>
+    <text x="490" y="190" font-size="9.5">Nav2 Simple Commander</text>
+    <text x="490" y="204" font-size="9.5">waypoints.yaml → FollowWaypoints</text>
+
+    <text x="490" y="270" font-weight="bold">victim_registry</text>
+    <text x="490" y="285" font-size="9.5">dedup (same ID / 0.5 m)</text>
+    <text x="490" y="298" font-size="9.5">service /get_victims</text>
+    <text x="490" y="311" font-size="9.5">results/victims.json, .csv</text>
+  </g>
+  <g fill="none" stroke="#000" stroke-width="1" marker-end="url(#arr)">
+    <path d="M330,52 L330,80"/>
+    <path d="M190,105 L248,105"/>
+    <path d="M330,128 L330,156"/>
+    <path d="M478,187 L412,187"/>
+    <path d="M248,198 L192,168"/>
+    <path d="M150,180 L150,200 L220,200 L220,270 L248,270"/>
+    <path d="M190,245 L205,245 L205,300 L248,300"/>
+    <path d="M412,284 L478,284"/>
+    <path d="M575,216 L575,250" stroke-dasharray="4 3"/>
+  </g>
+  <g font-size="9" font-style="italic">
+    <text x="336" y="70">/map</text>
+    <text x="196" y="99">/scan</text>
+    <text x="336" y="146">TF map→odom</text>
+    <text x="418" y="181">action</text>
+    <text x="197" y="163">/cmd_vel</text>
+    <text x="224" y="233">image,</text>
+    <text x="224" y="244">TF</text>
+    <text x="414" y="247">/victim_detections</text>
+    <text x="581" y="237">GetVictims</text>
+  </g>
+</svg>
+<p class="caption">Figure 1. Nodes and main interfaces. All nodes use simulated time. The mission launch file (<span class="mono">sar_bringup/launch/mission.launch.py</span>) starts every box shown.</p>
+
+<table>
+  <tr><th style="width:23%">Package</th><th>Contents</th></tr>
+  <tr><td class="mono">sar_bringup</td><td>world and marker generators, robot model (SDF + URDF), saved map, AMCL/Nav2/SLAM parameters, camera calibration, launch files (sim, slam, nav, mission)</td></tr>
+  <tr><td class="mono">sar_perception</td><td><span class="mono">aruco_detector</span>: detection, pose estimation, camera → map projection, RViz markers, debug image</td></tr>
+  <tr><td class="mono">sar_mission</td><td><span class="mono">victim_registry</span> (dedup, service, JSON/CSV export) and <span class="mono">patrol</span> (waypoints); dedup rules unit-tested</td></tr>
+  <tr><td class="mono">sar_interfaces</td><td><span class="mono">msg/Victim</span> (id, map position, range, observations), <span class="mono">srv/GetVictims</span></td></tr>
+</table>
+
+<h2>2. Environment and sensor wiring</h2>
+<p>The world and markers are generated by scripts, so marker size and positions are defined once and the ground truth is known. Each marker is a thin static box textured with a DICT_4X4_50 image: a 0.20 m black square inside a 0.05 m white quiet zone. The robot is a copy of the TurtleBot3 Waffle with three changes, each found by measuring:</p>
+<ul>
+  <li><b>Optical frame:</b> the stock camera plugin stamps images with <span class="mono">camera_rgb_frame</span> (x forward), while OpenCV poses are in the optical frame (z forward). <span class="mono">frame_name</span> is set to <span class="mono">camera_rgb_optical_frame</span> so the TF chain is correct without a rotation patch in code.</li>
+  <li><b>Camera pose:</b> the SDF camera sat 1 cm below the URDF camera. The SDF pose was set to match, and the URDF rotation uses exact π/2 values.</li>
+  <li><b>Resolution and lidar:</b> the camera runs at 640×480 and 15 Hz instead of 1920×1080 at 30 Hz. <span class="mono">camera_info.yaml</span> follows from the field of view: f = 640 / (2·tan(1.02974/2)) = 565.6 px, c = (320.5, 240.5), zero distortion. The lidar range was raised to 8 m at 10 Hz so SLAM and AMCL see through doorways.</li>
+</ul>
+</div>
+
+<div class="page">
+<h2>3. Camera-to-map TF chain</h2>
+<p><span class="mono">cv2.aruco.detectMarkers</span> finds the four corners of each marker, and <span class="mono">estimatePoseSingleMarkers</span> solves for the marker pose from the known side length (0.20 m) and K. The result, a rotation vector and translation vector, is expressed in <span class="mono">camera_rgb_optical_frame</span>: x right, y down, z forward (REP-103 camera convention). The detector puts this pose in a <span class="mono">PoseStamped</span> with the <b>image's</b> header (frame and timestamp) and calls <span class="mono">tf2 Buffer.transform(pose, "map")</span>. tf2 then composes these transforms:</p>
+
+<table>
+  <tr><th style="width:36%">Transform (parent → child)</th><th style="width:30%">Published by</th><th>Nature</th></tr>
+  <tr><td class="mono">map → odom</td><td>AMCL</td><td>dynamic; corrects odometry drift from laser/map matching</td></tr>
+  <tr><td class="mono">odom → base_footprint</td><td>Gazebo diff_drive plugin</td><td>dynamic, 30 Hz</td></tr>
+  <tr><td class="mono">base_footprint → base_link → camera_link → camera_rgb_frame</td><td>robot_state_publisher (URDF)</td><td>static; camera at (0.069, −0.047, 0.117) m</td></tr>
+  <tr><td class="mono">camera_rgb_frame → camera_rgb_optical_frame</td><td>robot_state_publisher (URDF)</td><td>static rotation RPY (−90°, 0, −90°)</td></tr>
+</table>
+
+<div class="eq">p_map = T<sub>map←odom</sub>(t) · T<sub>odom←base</sub>(t) · T<sub>base←optical</sub> · p_optical &nbsp;&nbsp;&nbsp; (t = image timestamp)</div>
+
+<p><b>Why the image timestamp matters.</b> The robot keeps moving while an image is processed. Looking up TF at the image time uses the robot pose at the moment the photo was taken; using "latest" would place markers wrongly whenever the robot turns. <b>Why REP-105 splits the chain.</b> A TF frame can have only one parent, so odometry owns <span class="mono">odom → base</span> (smooth, drifting) and AMCL owns <span class="mono">map → odom</span> (the correction). <b>Implementation detail.</b> The TF subscriptions and the image callback are in separate callback groups on a multi-threaded executor, so TF keeps arriving while an image callback waits up to 0.2 s for a transform. A first single-threaded version fell behind TF and failed with extrapolation errors. Detections farther than 3.5 m or smaller than 20 px per side are dropped because pose noise grows with range.</p>
+
+<h2>4. Deduplication logic</h2>
+<p>The detector publishes one <span class="mono">Victim</span> message per marker per frame, so a single marker yields 50–370 detections during a patrol. <span class="mono">registry_core.py</span> (pure Python, unit-tested) reduces them to one entry per victim. For each detection (id, x, y, range):</p>
+<ol>
+  <li><b>Same ID → same victim.</b> Merge into the nearest victim with that ID. <i>Guard:</i> if that victim is already confirmed and the detection is more than <b>1.0 m</b> away, reject it as an outlier (for example, a transform taken during a localization jump).</li>
+  <li><b>Nearby position → same victim.</b> Otherwise, if any victim lies within <b>0.5 m</b>, merge into it. This absorbs a misread ID. A victim's ID is the majority vote of its observations, so a rare misread cannot rename it.</li>
+  <li><b>Otherwise → new victim.</b></li>
+</ol>
+<p><b>Position estimate:</b> a weighted running mean with weight 1/range², so close, more accurate observations dominate (the minimum range used for weighting is 0.5 m). <b>Confirmation:</b> a victim is reported by the service and written to file only after <b>3</b> observations, which filters one-frame false positives. <b>Why 0.5 m:</b> it is several times the observed projection error (≈ 8 cm) yet far below the marker spacing (&gt; 2 m), so two real victims cannot merge. Results are written atomically every 2 s while they change and again on shutdown.</p>
+
+<div class="two">
+<div>
+<h2>5. Results (real run, <span class="mono">victims.json</span>)</h2>
+<table>
+  <tr><th>ID</th><th class="num">map x</th><th class="num">map y</th><th class="num">obs.</th><th class="num">error</th></tr>
+  <tr><td>0</td><td class="num">−3.970</td><td class="num">4.847</td><td class="num">182</td><td class="num">7.9 cm</td></tr>
+  <tr><td>1</td><td class="num">5.872</td><td class="num">2.921</td><td class="num">156</td><td class="num">9.2 cm</td></tr>
+  <tr><td>2</td><td class="num">3.946</td><td class="num">−4.868</td><td class="num">127</td><td class="num">7.5 cm</td></tr>
+  <tr><td>3</td><td class="num">−5.888</td><td class="num">−1.981</td><td class="num">148</td><td class="num">3.7 cm</td></tr>
+  <tr><td>4</td><td class="num">1.145</td><td class="num">−1.032</td><td class="num">44</td><td class="num">7.3 cm</td></tr>
+  <tr><td>5</td><td class="num">−1.132</td><td class="num">0.016</td><td class="num">372</td><td class="num">9.3 cm</td></tr>
+</table>
+<p>6/6 victims found, no duplicates, 0 outliers rejected; mean error <b>7.5 cm</b> against ground truth.</p>
+</div>
+<div>
+<h2>6. Navigation and error sources</h2>
+<p><b>Map:</b> built with slam_toolbox (online async) while Nav2 drove to clicked goals. Because Gazebo's diff drive reports odometry in world coordinates, the saved map frame coincides with the world frame, so results compare directly with ground truth.</p>
+<p><b>AMCL:</b> alpha1–4 = 0.05 (low odometry noise in simulation), 120 beams, updates every 0.1 m / 0.1 rad, initial pose preset. Measured pose error is 5–10 cm, the main contributor to projection error. Pose estimation alone is within 1 cm at 1.5 m.</p>
+<p><b>Nav2:</b> inflation radius 0.45 m with scaling factor 5 so the 1.2 m doorways stay passable; waypoint poses face each marker from about 1.7 m, with a 2 s pause at each.</p>
+<p><b>Limitations:</b> marker textures ignore lighting; the stock Waffle can yaw slowly for a few seconds after stopping (contact physics; TF follows the true motion).</p>
+</div>
+</div>
+</div>
+
+</body>
+</html>
