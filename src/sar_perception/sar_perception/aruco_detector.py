@@ -224,7 +224,9 @@ def main():
     executor = MultiThreadedExecutor(num_threads=3)
     executor.add_node(node)
     try:
-        executor.spin()
+        # spin_once with a timeout so Ctrl+C is noticed even when no messages arrive
+        while rclpy.ok():
+            executor.spin_once(timeout_sec=0.2)
     except KeyboardInterrupt:
         pass
     finally:
